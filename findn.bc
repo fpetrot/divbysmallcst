@@ -1,0 +1,16 @@
+scale = 0
+
+define void findn(p)
+{
+    for (n = 1; n < 512; n++) {
+        v = 2^n - 1
+        r = v%p
+        if (r == 0) {
+            print "r=0 for n=", n, "\n"
+	    return
+        }
+    }
+}
+
+findn(9*9)
+quit
