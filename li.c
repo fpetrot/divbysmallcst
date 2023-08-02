@@ -148,7 +148,8 @@ uint32_t divu27(uint32_t n)
 {
    uint32_t x = n, y;
    y = (x << 1) + x + 15;
-   y = (y >> 2) + (x << 2);
+   /* Typo in the paper, y was assigned */
+   x = (y >> 2) + (x << 2);
    x = x - (x >> 9);
    x = (x >> 18) + x;
    x = (x >> 7);
