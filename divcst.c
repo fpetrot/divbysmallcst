@@ -104,7 +104,7 @@ uint32_t divu49(uint32_t n)
 #endif
 #if 0
     /*
-     * Solution that overflows on 82.208.3584, which is similar
+     * Solution that overflows on 822.083.584, which is similar
      * to the divide 47 that Li proposes.
      * 6 additions, but 2 with 1, which makes it 4 in HW.
      */
@@ -127,12 +127,141 @@ uint32_t divu49(uint32_t n)
 #endif
 }
 
+uint32_t rr;
+uint32_t divu53(uint32_t n)
+{
+#if 0
+    /*
+     *                 11111111112222222222333
+     *        12345678901234567890123456789012
+     * 1/53 = 10011010100100001110011111010000
+     *        x       x
+     *     10011010100100001110011111010000
+     *     x  x       x
+     */
+    uint32_t x = n, y;
+    y = x + (x >> 9);
+    y = (x << 2) + y;
+    y = y + (y >> 6) + 4;
+    y = (x >> 2) - y;
+    y = (x >> 14) - y;
+    y = y + (x >> 16);
+    x = y + (x >> 18);
+    x = x - (x >> 26);
+    x = (x >> 8);
+    rr = n - x*53;
+    return x;
+#endif
+
+#if 0
+    /*
+     * Dumb version without trying factorization
+     *      0b10011010100100001110011111011001
+     *                 11111111112222222222333
+     *        12345678901234567890123456789012
+     * 1/53 = 10011010100100001110011111010000
+     */
+    uint32_t x = n;
+    x = (x >> 1)
+        + (x >> 4) + (x >> 5)
+        + (x >> 7)
+        + (x >> 9)
+        + (x >> 12)
+        + (x >> 17) + (x >> 18)  + (x >> 19)
+        + (x >> 22) + (x >> 23)  + (x >> 24) + (x >> 25) + (x >> 26)
+        + (x >> 28);
+    x = (x >> 5);
+#if 1
+    uint32_t r = n - x*53;
+    return x + (r > 52);
+#else
+    return x;
+#endif
+#endif
+#if 0
+    uint32_t x = n, y, z;
+    y = (x >> 4) + (x >> 5) + (x >> 7);
+    z = ((x >> 10) - (x >> 13)) >> 6;
+    x = (x >> 1) +
+        + y + z + (z >> 5) + (y >> 21)
+        + (x >> 9)
+        + (x >> 12);
+    x = (x >> 5);
+#if 0
+    uint32_t r = n - x*53;
+    return x + (r > 52);
+#else
+    rr = n - x*53;
+    return x;
+#endif
+
+#endif
+#if 1
+    /*
+     * Dumb version without trying factorization
+     *      0b10011010100100001110011111011001
+     *                 11111111112222222222333
+     *        12345678901234567890123456789012
+     * 1/53 ~ 10011010100100001110011111010000
+     */
+#if 0 /* Error(222298112:4194304.000000) : expects 4194304 != has 0 */
+    const uint32_t s = 2;
+    uint32_t x = ((n + 1) << s);
+    x = (x << 2)
+        + (x >> 1)
+        + (x >> 2)
+        + (x >> 4)
+        + (x >> 6)
+        + (x >> 9)
+        + (((x >> 0) - (x >> 3)) >> 13)
+        + (((x >> 0) - (x >> 5)) >> 18)
+        + (x >> 25)
+        + (x >> 26);
+    x = (x >> s);
+    x = (x >> 8);
+#else
+#if 0
+    /* Error(889192448:16777216.000000) : expects 16777216 != has 0 */
+    const uint32_t s = 2;
+    uint32_t x = ((n + 1) << s), y;
+    y = (x >> 1)
+        + (x >> 2)
+        + (x >> 4)
+        + (x >> 6)
+        + (x >> 9)
+        + ((x - (x >> 3)) >> 13)
+        + ((x - (x >> 5)) >> 18)
+        + (x >> 25)
+        + (x >> 26);
+    x = x + (y >> s);
+    x = (x >> 8);
+#else
+#if 1
+    uint32_t x = n + 1, y;
+    y = (x << 1)
+        + x
+        + (x >> 2)
+        + (x >> 4)
+        + (x >> 7)
+        + ((x - (x >> 3)) >> 11)
+        + ((x - (x >> 5)) >> 16)
+        + (x >> 23)
+        + (x >> 24);
+    x = (x << 2) + (y >> 2);
+    x = (x >> 8);
+#endif
+#endif
+#endif
+    return x;
+#endif
+}
+
 int main(int argc, char *argv[])
 {
     for (uint32_t i = 0; i < 0xdeadbeef; i++) {
-        uint32_t v = divu49(i);
-        if (v != i/49) {
-            fprintf(stderr, "Error(%u:%f) : expects %u != has %u\n", i, i/49., i/49, v);
+        uint32_t v = divu53(i);
+        if (v != i/53) {
+            fprintf(stdout, "Error(%8u:%f) : expects %u != has %u [%d](%u,%u)\n", i, i/53., i/53, v, rr);
         }
     }
     return 0;
