@@ -1,3 +1,21 @@
+/*
+ * Implementation of division by small constants using Li's
+ * routines.
+ * Copyright (C) 2024 Frédéric Pétrot <frederic.petrot@univ-grenoble-alpes.fr>
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or (at
+ * your option) any later version.
+
+ * This program is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+ * General Public License for more details.
+
+ * You should have received a copy of the GNU General Public License along
+ * with this program. If not, see <https://www.gnu.org/licenses/>.
+ */
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
@@ -9,6 +27,9 @@
  * Fast constant division routines.
  * IEEE Transactions on Computers, 100(9), 866-869.
  * Implementation of the cookbook in C
+ *
+ * Some routines have typos (27 and 39), others do not work exactly
+ * as expected (7, 49, 53) and I provide a modified implementation.
  */
 
 static inline uint32_t divu3(uint32_t n)
@@ -309,7 +330,7 @@ static inline uint32_t divu49(uint32_t n)
     x = (x >> 21) + x;
     x = (x >> 8);
 #else
-    x = (x << 2) - (x >> 5) + 2;
+    x = (x << 2) - (x >> 5) + 2; /* add 1 twice for hw */
     x = x + (x >> 2) + (((x >> 4) + x) >> 4);
     x = (x >> 21) + x;
     x = x >> 8;
@@ -451,6 +472,8 @@ do { \
 
 int main(void)
 {
+    checkall();
+    return 0;
     start_timer("shift and add");
     for (uint32_t i = 0; i < 0x7fffffff; i++) {
         volatile uint32_t v = divu49(i);
