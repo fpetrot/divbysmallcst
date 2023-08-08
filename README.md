@@ -34,7 +34,7 @@ Then, just use your compiler and your all set!
 
 However, when it comes to specialized implementations,
 such as tiny processors without multiplier (these beasts
-exists) or dedicated hardware, or lack of DSPs on your
+exist) or dedicated hardware, or lack of DSPs on your
 FPGA, this approach might prove useful.
 
 The important file is `li.c` that contains the cookbook,
