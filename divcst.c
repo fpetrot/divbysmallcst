@@ -116,10 +116,10 @@ uint32_t divu49(uint32_t n)
     return x;
 #endif
 #if 1
-    /* Same as above, but with only 5 additions, this time with 3
+    /* Same as above, but with only 5 additions,
      * which is better in SW. */
     uint32_t x = n;
-    x = (x << 2) - (x >> 5) + 3;
+    x = (x << 2) - (x >> 5) + 2;
     x = x + (x >> 2) + (((x >> 4) + x) >> 4);
     x = (x >> 21) + x;
     x = x >> 8;
@@ -127,7 +127,7 @@ uint32_t divu49(uint32_t n)
 #endif
 }
 
-uint32_t rr;
+uint32_t rr, x;
 uint32_t divu53(uint32_t n)
 {
 #if 0
@@ -135,9 +135,6 @@ uint32_t divu53(uint32_t n)
      *                 11111111112222222222333
      *        12345678901234567890123456789012
      * 1/53 = 10011010100100001110011111010000
-     *        x       x
-     *     10011010100100001110011111010000
-     *     x  x       x
      */
     uint32_t x = n, y;
     y = x + (x >> 9);
@@ -149,8 +146,48 @@ uint32_t divu53(uint32_t n)
     x = y + (x >> 18);
     x = x - (x >> 26);
     x = (x >> 8);
-    rr = n - x*53;
-    return x;
+#endif
+    /*
+     *                 11111111112222222222333
+     *        12345678901234567890123456789012
+     * 1/53 = 10011010100100001110011111010000
+     *
+     *                    11111111112222222222333
+     *        21012345678901234567890123456789012
+     * 1/53 = 10011010100100001110011111010000
+     *        x x        x
+     *              x x        x
+     *          -
+     *                        -
+     */
+#if 0
+    uint32_t x = (n << 1) + 1, y, z;
+    y = x + (x >> 9);
+    y = (x << 2) + y;
+    y = y + (y >> 6);
+
+    y = (x >> 2) - y;
+    y = (x >> 14) - y;
+    y = y + (x >> 16);
+    x = y + (x >> 18);
+    x = x - (x >> 26);
+    x = (x >> 8 >> 1);
+#endif
+
+#if 0
+    /* Trying to shift the (y << 1) below but got
+     * stucked with troncation at some point, ... */
+    uint32_t x = n << 1, y, z;
+    y = x + (x >> 9);
+    y = (x << 1) + (y >> 1);
+    y = y + (y >> 6);
+    y = (x >> 3) - y;
+    y = (x >> 15) - y;
+    y = (y << 1) + 7;
+    y = y + (x >> 16);
+    x = y + (x >> 18);
+    x = x - (x >> 26);
+    x = (x >> 8 >> 1);
 #endif
 
 #if 0
@@ -171,12 +208,6 @@ uint32_t divu53(uint32_t n)
         + (x >> 22) + (x >> 23)  + (x >> 24) + (x >> 25) + (x >> 26)
         + (x >> 28);
     x = (x >> 5);
-#if 1
-    uint32_t r = n - x*53;
-    return x + (r > 52);
-#else
-    return x;
-#endif
 #endif
 #if 0
     uint32_t x = n, y, z;
@@ -187,16 +218,8 @@ uint32_t divu53(uint32_t n)
         + (x >> 9)
         + (x >> 12);
     x = (x >> 5);
+#endif
 #if 0
-    uint32_t r = n - x*53;
-    return x + (r > 52);
-#else
-    rr = n - x*53;
-    return x;
-#endif
-
-#endif
-#if 1
     /*
      * Dumb version without trying factorization
      *      0b10011010100100001110011111011001
@@ -204,7 +227,7 @@ uint32_t divu53(uint32_t n)
      *        12345678901234567890123456789012
      * 1/53 ~ 10011010100100001110011111010000
      */
-#if 0 /* Error(222298112:4194304.000000) : expects 4194304 != has 0 */
+ /* Error(222298112:4194304.000000) : expects 4194304 != has 0 */
     const uint32_t s = 2;
     uint32_t x = ((n + 1) << s);
     x = (x << 2)
@@ -219,7 +242,7 @@ uint32_t divu53(uint32_t n)
         + (x >> 26);
     x = (x >> s);
     x = (x >> 8);
-#else
+#endif
 #if 0
     /* Error(889192448:16777216.000000) : expects 16777216 != has 0 */
     const uint32_t s = 2;
@@ -235,8 +258,9 @@ uint32_t divu53(uint32_t n)
         + (x >> 26);
     x = x + (y >> s);
     x = (x >> 8);
-#else
-#if 1
+#endif
+#if 0
+    /* Just inline the initial shift into the computation */
     uint32_t x = n + 1, y;
     y = (x << 1)
         + x
@@ -250,18 +274,97 @@ uint32_t divu53(uint32_t n)
     x = (x << 2) + (y >> 2);
     x = (x >> 8);
 #endif
+#if 0
+    /* Remove one add and one shift, barely enough, though:
+     * still 11 adds and 12 shifts, not so bad for HW at least */
+    uint32_t x = n + 1, y;
+    y = (x << 1) + (x >> 2);
+    y = x + y + (y >> 5);
+    y = y
+        + ((x - (x >> 3)) >> 11)
+        + ((x - (x >> 5)) >> 16)
+        + (x >> 23)
+        + (x >> 24);
+    x = (x << 2) + (y >> 2);
+    x = (x >> 8);
 #endif
+#if 0
+    /*
+     *                     1111 1111 112 2222
+     *       1012 3 4567 890123 4567 890 1234
+     *       |||| | |||| |||||| |||| ||| ||||
+     *   100 1101 0 1001 000011 1001 111 1011 000
+     *       |||| | |||| |||||| |||| ||| ||||
+     *       0123 4 5678 901234 5678 901 2345
+     *       x00x   x00x        x00x     x00x
+     *   y    y                            y
+     *                       zz
+     *                               ttt
+     * Well, 12 adds and 13 shifts, even worse
+     */
+    uint32_t x = n + 1, y;
+    y = (x << 1) + (x >> 2);
+    y = y + (y >> 5) + (y >> 15) + (y >> 22);
+    y = x + y + (x >> 12) + (x >> 13)
+        + (((x - (x >> 3))) >> 17)
+        + (x >> 23);
+    x = (x << 2) + (y >> 2);
+    x = (x >> 8);
 #endif
     return x;
-#endif
 }
+
+uint32_t divu7(uint32_t n)
+{
+    uint32_t x = n + 1;
+    x = (x << 2) + (x >> 1);
+    x = (x >> 6) + x;
+    x = (x >> 12) + x;
+    x = (x >> 24) + x;
+    x = (x >> 5);
+    return x;
+}
+
+uint32_t divu13(uint32_t n)
+{
+    uint32_t x = n + 1;
+    x = (x << 2) + (x >> 1);
+    x = x + (((x >> 1) + x) >> 4);
+    x = (x >> 12) + x;
+    x = (x >> 24) + x;
+    x = (x >> 6);
+    return x;
+}
+ 
+uint32_t divu81(uint32_t n)
+{
+    /*
+     * 64/81 ~ .11001010010001011000011111100110
+     *
+     *                 11111111112222222222333
+     *        12345678901234567890123456789012
+     *        11001010010001011000011111100110
+     *
+     */
+    uint32_t x = n, y;
+    y = 6 + (x << 2) + (x << 1)
+        + (x >> 13) + (x >> 14)
+        + (x >> 27) + (x >> 28)
+
+        + (x >> 2) + (x >> 4) + (x >> 7) + (x >> 11)
+        + (x >> 19) + (x >> 20) + (x >> 21) + (x >> 22) + (x >> 23) + (x >> 24);
+    x = (y >> 9);
+
+    return x;
+}
+ 
 
 int main(int argc, char *argv[])
 {
     for (uint32_t i = 0; i < 0xdeadbeef; i++) {
-        uint32_t v = divu53(i);
-        if (v != i/53) {
-            fprintf(stdout, "Error(%8u:%f) : expects %u != has %u [%d](%u,%u)\n", i, i/53., i/53, v, rr);
+        uint32_t v = divu81(i);
+        if (v != i/81) {
+            fprintf(stdout, "Error(%8u:%f) : expects %u != has %u [%d](%u,%u)\n", i, i/81., i/81, v, rr);
         }
     }
     return 0;
