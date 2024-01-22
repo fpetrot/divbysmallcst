@@ -12,5 +12,5 @@ define void findn(p)
     }
 }
 
-findn(9*9)
+findn(13*13)
 quit

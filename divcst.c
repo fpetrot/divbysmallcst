@@ -107,6 +107,9 @@ uint32_t divu49(uint32_t n)
      * Solution that overflows on 822.083.584, which is similar
      * to the divide 47 that Li proposes.
      * 6 additions, but 2 with 1, which makes it 4 in HW.
+     * This is an approximation of 32/49 with
+     * (((1/32+1/128+1/512+1/8192)*127)
+     * + ((1/32+1/128+1/512+1/8192)*127/(2^21)))/8
      */
     uint32_t x = n;
     x = (x << 2) - (x >> 5) + 1;
@@ -335,37 +338,291 @@ uint32_t divu13(uint32_t n)
     x = (x >> 6);
     return x;
 }
- 
+
+/*
+ * 64/81 ~ .11001010010001011000011111100110
+ *
+ *          decimal: 106048575 = 3³×5²×157109
+ *          157108 = 2²×7×31×181
+ *          180 = 2²×3²x5
+ *
+ *                   11111111112222222222333
+ *          12345678901234567890123456789012
+ *          110010100100010110000111111-----
+ *          1000101  1000101
+ *           1              1
+ *                              1 -   1
+ *
+ *                   11111111112222222222333
+ *          12345678901234567890123456789012
+ *          ||||||||||||||||||||||||||||||||
+ *          110010100100010110000111111-----
+ *
+ *          001101011011101001111000000-----
+ */
 uint32_t divu81(uint32_t n)
 {
-    /*
-     * 64/81 ~ .11001010010001011000011111100110
-     *
-     *                 11111111112222222222333
-     *        12345678901234567890123456789012
-     *        11001010010001011000011111100110
-     *
-     */
     uint32_t x = n, y;
-    y = 6 + (x << 2) + (x << 1)
-        + (x >> 13) + (x >> 14)
-        + (x >> 27) + (x >> 28)
+    y = (x >> 1) + (x >> 5) + (x >> 7);
+    x = y + (y >> 9)
+        + (x >> 2) + (x >> 17)
+        + ((x - (x >> 6)) >> 21);
+    x = (x >> 6);
 
-        + (x >> 2) + (x >> 4) + (x >> 7) + (x >> 11)
-        + (x >> 19) + (x >> 20) + (x >> 21) + (x >> 22) + (x >> 23) + (x >> 24);
-    x = (y >> 9);
+    uint32_t r = n - (x << 6) - (x << 4) - x;
 
-    return x;
+    return x + (r > 80);
 }
- 
+
+int32_t divs81(int32_t n)
+{
+    /*
+     * Same approach as with div, but substract n-1 before
+     * rounding towards 0
+     */
+    int32_t x = n, y;
+
+    x = x + (x >> 31 & 80);
+    y = (x >> 1) + (x >> 5) + (x >> 7);
+    x = y + (y >> 9)
+        + (x >> 2) + (x >> 17)
+        + ((x - (x >> 6)) >> 21);
+    x = (x >> 6);
+
+    int32_t r = n - (x << 6) - (x << 4) - x;
+
+    rr = r;
+
+    /*
+     * Condition is kind of a hack deduced by observing when the
+     * cases that fail.
+     * FIXME: understand that and simplify the expression.
+     * Harder than the expected x + (r > 80)
+     */
+    return x - (r < -80) + (r > 80) + (r > 0 && n < 0);
+}
+
+/*
+ * 64/121 ~ .10000111011001111010101101011111
+ * works for 32 bits: .10000111011001111010101101
+ * decimal: 35495597
+ *
+ *           11111111112222222222333
+ *  12345678901234567890123456789012
+ *  ||||||||||||||||||||||||||||||||
+ * .10000111011001111010101101------
+ *         101      101 101101
+ *       111111  111111 111111
+ *  1       0        0   0  0
+ */
+uint32_t divu121(uint32_t n)
+{
+    uint32_t x = n, y;
+#if 0
+    /* Simple version simply using the strides of ones:
+     * 11 adds and 12 shifts */
+    x = (x >> 1)
+        + ((x - (x >> 3)) >> 5)
+        + (x >> 10) + (x >> 11)
+        + ((x - (x >> 4)) >> 13)
+        + (x >> 19)
+        + (x >> 21)
+        + (x >> 23)
+        + (x >> 24)
+        + (x >> 26);
+    x = (x >> 6);
+
+    uint32_t r = n - (x << 7) + (x << 3) - x;
+    return x + (r > 120);
+#elif 0
+    /* Version seeking for repetitive 101 patterns:
+     * 10 adds and 12 shifts */
+    y = (x >> 1) + (x >> 3);
+    y = (y >> 7) + (y >> 16) + (y >> 20) + (y >> 23);
+    x = y
+        + (x >> 1)
+        + (x >> 6) + (x >> 7)
+        + (x >> 11)
+        + ((x - (x >> 3)) >> 13);
+    x = (x >> 6);
+
+    uint32_t r = n - (x << 7) + (x << 3) - x;
+    return x + (r > 120);
+#else
+    /* Version with 111111 pattern and subs, essentially:
+     * 8 adds and 9 shifts, but needs a more complex adjustment,
+     * one shift and one add.
+     * Still better than the previous version, though. */
+    y = (x - (x >> 6));
+    y = (y >> 5) + (y >> 13) + (y >> 20);
+    x = y
+        + (x >> 1)
+        - (x >> 9)
+        - (x >> 18)
+        - (x >> 22)
+        - (x >> 25);
+    x = (x >> 6);
+
+    int32_t r = n - (x << 7) + (x << 3) - x;
+    x += (r > 120) + (r >> 31);
+    return x;
+#endif
+}
+
+int32_t divs121(int32_t n)
+{
+    int32_t x = n + (n >> 31 & 120);
+#if 0
+    x = (x >> 1)
+        + (x >> 6) + (x >> 7) + (x >> 8)
+        + (x >> 10) + (x >> 11)
+        + (x >> 14) + (x >> 15) + (x >> 16) + (x >> 17)
+        + (x >> 19)
+        + (x >> 21)
+        + (x >> 23)
+        + (x >> 24)
+        + (x >> 26);
+#else
+    int32_t y;
+    y = (x - (x >> 6));
+    y = (y >> 5) + (y >> 13) + (y >> 20);
+    x = y
+        + (x >> 1)
+        - (x >> 9)
+        - (x >> 18)
+        - (x >> 22)
+        - (x >> 25);
+#endif
+    x = (x >> 6);
+
+    int32_t r = n - (x << 7) + (x << 3) - x;
+    rr = r;
+
+    /* Yet another adjustment, very dependent from the truncations
+     * that occur, I am afraid. */
+    return x + (r > 120) - (r < 0 && n > 0) - (r < -120) + (r > 0 && n < 0);
+}
+
+/*
+ * 128/169 ~ .11000001111001001011101111010101
+ *   decimal : 25414007
+ *
+ *            11111111112222222222333
+ *   12345678901234567890123456789012
+ *   ||||||||||||||||||||||||||||||||
+ *  .1100000111100100101110111-------
+ *   0011111000011011010001000
+ */
+uint32_t divu169(uint32_t n)
+{
+    uint32_t x = n, y;
+#if 0
+    x = (x >> 1) + (x >> 2)
+        + (x >> 8) + (x >> 9) + (x >> 10) + (x >> 11)
+        + (x >> 14)
+        + (x >> 17)
+        + (x >> 19) + (x >> 20) + (x >> 21)
+        + (x >> 23) + (x >> 24) + (x >> 25);
+#elif 0
+    y = (x - (x >> 3));
+    x = (x >> 1) + (x >> 2)
+        + ((x >> 7) - (x >> 11))
+        + (x >> 14)
+        + (x >> 17)
+        + (y >> 18)
+        + (y >> 22);
+#else
+    y = ((x >> 2) - (x >> 7))
+        + ((x >> 11) - (x >> 18))
+        + (x >> 22)
+        - (x >> 14)
+        - (x >> 17);
+    x = ~y;
+#endif
+    x = (x >> 7);
+
+    uint32_t r = n - x * 169;
+    return x + (r > 168);
+}
+
+/*
+ * 32/49 ~ .10100111001011110000010100111
+ *   decimal : 350609575
+ *
+ *            11111111112222222222333
+ *   12345678901234567890123456789012
+ *   ||||||||||||||||||||||||||||||||
+ *  .10100111001011110000010100111---
+ *  .1010011100101111
+ *   101  101  101101
+ *         1       1
+ */
+uint32_t divx49(uint32_t n)
+{
+    uint64_t x = n, y;
+#if 0
+    y = (x >> 1)
+        + (x >> 3)
+        + (x >> 6)
+        + (x >> 7)
+        + (x >> 8)
+        + (x >> 11)
+        + (x >> 13)
+        + (x >> 14)
+        + (x >> 15)
+        + (x >> 16);
+    x = y + (y >> 21);
+    x = (x >> 5);
+#elif 0
+    y = (x >> 1) + (x >> 3);
+    x = y + (y >> 5) + (y >> 10) + (y >> 13)
+        + (x >> 7)
+        + (x >> 15);
+    x = x + (x >> 21);
+    x = (x >> 5);
+#else
+    x = (x << 2) - (x >> 5) + 1;
+    x = x + (x >> 2) + (((x >> 4) + x) >> 4) + 1;
+    x = (x >> 21) + x;
+    x = x >> 8;
+    return x;
+#endif
+
+    uint32_t r = n - x * 49;
+    return x + (r > 48);
+}
 
 int main(int argc, char *argv[])
 {
-    for (uint32_t i = 0; i < 0xdeadbeef; i++) {
-        uint32_t v = divu81(i);
-        if (v != i/81) {
-            fprintf(stdout, "Error(%8u:%f) : expects %u != has %u [%d](%u,%u)\n", i, i/81., i/81, v, rr);
+#if 1
+    uint32_t i = 0xffffffff;
+    do {
+        i++;
+        int32_t v = divx49(i);
+
+        if (v != i/49) {
+            fprintf(stdout, "%s(%8d:%f) : expects %d != has %d [%d]\n", v != i/49 ? "Error" : "     ", i, i/49., i/49, v, rr);
         }
-    }
+        if (i == 2147483647) {
+            printf("----------------------------------------------------\n");
+        }
+    } while (i < 0xffffffff);
+#endif
+
+#if 0
+    uint32_t j = 0xffffffff;
+    do {
+        int32_t i = (int32_t)++j;
+        int32_t v = divs121(i);
+
+        if (v != i/121) {
+            fprintf(stdout, "%s(%8d:%f) : expects %d != has %d [%d]\n", v != i/121 ? "Error" : "     ", i, i/121., i/121, v, rr);
+        }
+        if (j == 2147483647) {
+            printf("----------------------------------------------------\n");
+        }
+    } while (j < 0xffffffff);
+#endif
+
     return 0;
 }
