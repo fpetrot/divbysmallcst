@@ -21,6 +21,7 @@
 #include <stdint.h>
 #include <unistd.h>
 #include <x86intrin.h>
+#include <math.h>
 
 /*
  * Li, S. Y. (1985).
@@ -430,11 +431,12 @@ int checkall(void)
         uint32_t n = tests[j].n;
         uint32_t(*divu) (uint32_t) = tests[j].fct;
         fprintf(stderr, "Checking divu%d\n", n);
-        for (uint32_t i = 0; i < 0xdeadbeef; i++) {
+        /* We know the divisions will fail much before bit 31 is 1 */
+        for (uint32_t i = 0; i < 0x80000000; i++) {
             uint32_t v = divu(i);
             /* print first number to overflow and then exits */
             if (v != i / n) {
-                fprintf(stderr, "Error(%u:%f) : expects %u != has %u\n", i, (float) i / n, i / n, v);
+                fprintf(stderr, "Error @ 0x%08x (%u:%f) : expects %u != has %u\n", i, i, (float) i / n, i / n, v);
                 break;
             }
         }
@@ -465,24 +467,148 @@ do { \
             "mov %%eax, %1\n\t" \
             "cpuid\n\t": "=r" (eh), "=r" (el):: \
             "%rax", "%rbx", "%rcx", "%rdx"); \
-    start = ( ((uint64_t)sh << 32) | sh ); \
+    start = ( ((uint64_t)sh << 32) | sl ); \
     end = ( ((uint64_t)eh << 32) | el ); \
-    printf("%s: %llu\n", str, end - start); \
-} while (0)
+    delta = end - start; \
+    } while (0)
+
+// printf("%s: %llu\n", str, end - start);
+
+#define DIVSA(cst) \
+    case cst : \
+        for (int k = 0; k < loop; k++) { \
+            start_timer("shift and add"); \
+            for (uint32_t i = 0; i < 1000000; i++) { \
+                volatile uint32_t v = divu ## cst(i); \
+            } \
+            end_timer; \
+            tsa[j][k] = delta; \
+        } \
+        break;
+
+#define DIVMH(cst) \
+    case cst : \
+        for (int k = 0; k < loop; k++) { \
+            start_timer("multiply high"); \
+            for (uint32_t i = 0; i < 1000000; i++) { \
+                volatile uint32_t v = i/cst; \
+            } \
+            end_timer; \
+            tmh[j][k] = delta; \
+        } \
+        break;
+
+int measureall(void)
+{
+    uint64_t tsa[sizeof tests / sizeof *tests][loop];
+    uint64_t tmh[sizeof tests / sizeof *tests][loop];
+    uint64_t delta;
+
+    for (int j = 0; j < sizeof tests / sizeof *tests; j++) {
+        uint32_t n = tests[j].n;
+        uint32_t(*divu) (uint32_t) = tests[j].fct;
+        printf("Divide by %d\n", n);
+        switch (n) {
+        DIVSA(3)
+        DIVSA(5)
+        DIVSA(7)
+        DIVSA(9)
+        DIVSA(11)
+        DIVSA(13)
+        DIVSA(15)
+        DIVSA(17)
+        DIVSA(19)
+        DIVSA(21)
+        DIVSA(23)
+        DIVSA(25)
+        DIVSA(27)
+        DIVSA(29)
+        DIVSA(31)
+        DIVSA(33)
+        DIVSA(35)
+        DIVSA(37)
+        DIVSA(39)
+        DIVSA(41)
+        DIVSA(43)
+        DIVSA(45)
+        DIVSA(47)
+        DIVSA(49)
+        DIVSA(51)
+        DIVSA(53)
+        DIVSA(55)
+        }
+        switch (n) {
+        DIVMH(3)
+        DIVMH(5)
+        DIVMH(7)
+        DIVMH(9)
+        DIVMH(11)
+        DIVMH(13)
+        DIVMH(15)
+        DIVMH(17)
+        DIVMH(19)
+        DIVMH(21)
+        DIVMH(23)
+        DIVMH(25)
+        DIVMH(27)
+        DIVMH(29)
+        DIVMH(31)
+        DIVMH(33)
+        DIVMH(35)
+        DIVMH(37)
+        DIVMH(39)
+        DIVMH(41)
+        DIVMH(43)
+        DIVMH(45)
+        DIVMH(47)
+        DIVMH(49)
+        DIVMH(51)
+        DIVMH(53)
+        DIVMH(55)
+        }
+    }
+
+    uint64_t meansa[sizeof tests / sizeof *tests];
+    uint64_t meanmh[sizeof tests / sizeof *tests] ;
+    double sigmasa[sizeof tests / sizeof *tests];
+    double sigmamh[sizeof tests / sizeof *tests];
+
+    for (int j = 0; j < sizeof tests / sizeof *tests; j++) {
+        meansa[j] = meanmh[j] = 0;
+        for (int k = 0; k < loop; k++) {
+            meansa[j] += tsa[j][k];
+            meanmh[j] += tmh[j][k];
+        }
+        meansa[j] /= loop;
+        meanmh[j] /= loop;
+    }
+
+    for (int j = 0; j < sizeof tests / sizeof *tests; j++) {
+        uint64_t vsa = 0, vmh = 0;
+        sigmasa[j] = sigmamh[j] = 0;
+        for (int k = 0; k < loop; k++) {
+            vsa += (tsa[j][k] - meansa[j]) * (tsa[j][k] - meansa[j]);
+            vmh += (tmh[j][k] - meanmh[j]) * (tmh[j][k] - meanmh[j]);
+        }
+        sigmasa[j] = sqrt((double)vsa/loop);
+        sigmamh[j] = sqrt((double)vmh/loop);
+    }
+
+    for (int j = 0; j < sizeof tests / sizeof *tests; j++) {
+        uint32_t n = tests[j].n;
+        printf("%d: meansa %lu sigmasa %1.1f meanmh %lu sigmamh %1.1f\n",
+                 n, meansa[j]/10000, sigmasa[j]/10000, meanmh[j]/10000, sigmamh[j]/10000);
+    }
+
+    return 0;
+}
 
 int main(void)
 {
+#if 0
     checkall();
-    return 0;
-    start_timer("shift and add");
-    for (uint32_t i = 0; i < 0x7fffffff; i++) {
-        volatile uint32_t v = divu49(i);
-    }
-    end_timer;
-    start_timer("multiply high");
-    for (uint32_t i = 0; i < 0x7fffffff; i++) {
-        volatile uint32_t v = i/49;
-    }
-    end_timer;
+#else
+    measureall();
+#endif
     return 0;
 }
