@@ -1,0 +1,15 @@
+module divu53
+#(parameter DATA_WIDTH = 66)
+ (input [DATA_WIDTH - 1:0] n, output [DATA_WIDTH - 6:0] q);
+  wire [DATA_WIDTH + 0:0] x0 = n + 1;
+  wire [DATA_WIDTH + 1:0] y0 = ({1'b0, x0} << 1) + ({1'b0, x0} >> 2);
+  wire [DATA_WIDTH + 2:0] y1 = {1'b0, x0} + {1'b0, y0} + ({1'b0, y0} >> 5);
+  wire [DATA_WIDTH + 4:0] y2 = {2'b0, y1}
+                               + (({4'b0, x0} - ({5'b0, x0} >> 3)) >> 11)
+                               + (({4'b0, x0} - ({5'b0, x0} >> 5)) >> 16)
+                               + ({5'b0, x0} >> 23)
+                               + ({5'b0, x0} >> 24);
+  wire [DATA_WIDTH + 5:0] x1 = ({5'b0, x0} << 2) + ({1'b0, y2} >> 2);
+  wire [DATA_WIDTH - 6:0] x2 = (x1 >> 8);
+  assign q = x2;
+endmodule

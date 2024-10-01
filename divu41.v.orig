@@ -1,0 +1,11 @@
+module divu41
+#(parameter DATA_WIDTH = 66)
+ (input [DATA_WIDTH - 1:0] n, output [DATA_WIDTH - 6:0] q);
+  wire [DATA_WIDTH - 1:0] x0 = n;
+  wire [DATA_WIDTH + 2:0] y0 = ({3'b0, x0} << 1) + {2'b0, x0} + 2;
+  wire [DATA_WIDTH + 3:0] x1 = ({4'b0, x0} >> 3) + {1'b0, y0};
+  wire [DATA_WIDTH + 4:0] x2 = {1'b0, x1} - ({1'b0, x1} >> 10);
+  wire [DATA_WIDTH + 5:0] x3 = ({1'b0, x2} >> 20) + {1'b0, x2};
+  wire [DATA_WIDTH - 6:0] x4 = (x3 >> 7);
+  assign q = x4;
+endmodule

@@ -75,8 +75,7 @@ static inline uint32_t divu7(uint32_t n)
 
 static inline uint32_t divu9(uint32_t n)
 {
-    uint32_t x = n, y;
-    x = x + 1;
+    uint32_t x = n + 1;
     x = (x << 1) + x + (x >> 1);
     x = (x >> 6) + x;
     x = (x >> 12) + x;
@@ -87,8 +86,7 @@ static inline uint32_t divu9(uint32_t n)
 
 static inline uint32_t divu11(uint32_t n)
 {
-    uint32_t x = n, y;
-    x = x + 1;
+    uint32_t x = n + 1, y;
     y = (x << 2) + x;
     x = y + (y >> 4) + (x >> 1);
     x = (x >> 10) + x;
@@ -99,8 +97,7 @@ static inline uint32_t divu11(uint32_t n)
 
 static inline uint32_t divu13(uint32_t n)
 {
-    uint32_t x = n;
-    x = x + 1;
+    uint32_t x = n + 1;
     x = (x << 2) + (x >> 1);
     x = x + (((x >> 1) + x) >> 4);
     x = (x >> 12) + x;
@@ -111,8 +108,7 @@ static inline uint32_t divu13(uint32_t n)
 
 static inline uint32_t divu15(uint32_t n)
 {
-    uint32_t x = n;
-    x = x + 1;
+    uint32_t x = n + 1;
     x = (x << 2) + (x >> 2);
     x = (x >> 8) + x;
     x = (x >> 16) + x;
@@ -155,8 +151,7 @@ static inline uint32_t divu21(uint32_t n)
 
 static inline uint32_t divu23(uint32_t n)
 {
-    uint32_t x = n;
-    x = x + 1;
+    uint32_t x = n + 1;
     x = (((x >> 3) + x) >> 1) + x + (x << 2);
     x = (x >> 11) + x;
     x = (x >> 22) + x;
@@ -209,8 +204,7 @@ static inline uint32_t divu29(uint32_t n)
 
 static inline uint32_t divu31(uint32_t n)
 {
-    uint32_t x = n;
-    x = x + 1;
+    uint32_t x = n + 1;
     x = (x << 2) + (x >> 3);
     x = (x >> 10) + x;
     x = (x >> 20) + x;
@@ -220,8 +214,7 @@ static inline uint32_t divu31(uint32_t n)
 
 static inline uint32_t divu33(uint32_t n)
 {
-    uint32_t x = n, y;
-    x = x + 1;
+    uint32_t x = n + 1, y;
     y = (x << 1) + x;
     y = (y >> 2) + y;
     x = (x >> 3) + y;
@@ -233,8 +226,7 @@ static inline uint32_t divu33(uint32_t n)
 
 static inline uint32_t divu35(uint32_t n)
 {
-    uint32_t x = n, y;
-    x = x + 1;
+    uint32_t x = n + 1, y;
     y = (x << 1) + x;
     x = (x >> 2) + y;
     x = (x >> 3) + x;
@@ -302,8 +294,7 @@ static inline uint32_t divu43(uint32_t n)
 
 static inline uint32_t divu45(uint32_t n)
 {
-    uint32_t x = n, y;
-    x = x + 1;
+    uint32_t x = n + 1, y;
     y = (x << 2) + x;
     y = (y >> 3) + y;
     x = (x >> 4) + y;
@@ -331,7 +322,7 @@ static inline uint32_t divu49(uint32_t n)
     x = (x >> 21) + x;
     x = (x >> 8);
 #else
-    x = (x << 2) - (x >> 5) + 2; /* add 1 twice for hw */
+    x = (x << 2) - (x >> 5) + 2;
     x = x + (x >> 2) + (((x >> 4) + x) >> 4);
     x = (x >> 21) + x;
     x = x >> 8;
@@ -432,7 +423,7 @@ int checkall(void)
         uint32_t(*divu) (uint32_t) = tests[j].fct;
         fprintf(stderr, "Checking divu%d\n", n);
         /* We know the divisions will fail much before bit 31 is 1 */
-        for (uint32_t i = 0; i < 0x80000000; i++) {
+        for (uint32_t i = 0; i <= 0x21ffffff; i++) {
             uint32_t v = divu(i);
             /* print first number to overflow and then exits */
             if (v != i / n) {
@@ -472,13 +463,20 @@ do { \
     delta = end - start; \
     } while (0)
 
-// printf("%s: %llu\n", str, end - start);
-
+/*
+ * Make sure the cache is hot before starting the measure.
+ * This is needed to have a low variance between values.
+ */
 #define DIVSA(cst) \
     case cst : \
         for (int k = 0; k < loop; k++) { \
+            for (uint32_t i = 0; i < 10000; i++) { \
+                volatile uint32_t v = divu ## cst(i); \
+            } \
+        } \
+        for (int k = 0; k < loop; k++) { \
             start_timer("shift and add"); \
-            for (uint32_t i = 0; i < 1000000; i++) { \
+            for (uint32_t i = 0; i < 10000; i++) { \
                 volatile uint32_t v = divu ## cst(i); \
             } \
             end_timer; \
@@ -489,8 +487,13 @@ do { \
 #define DIVMH(cst) \
     case cst : \
         for (int k = 0; k < loop; k++) { \
+            for (uint32_t i = 0; i < 10000; i++) { \
+                volatile uint32_t v = i/cst; \
+            } \
+        } \
+        for (int k = 0; k < loop; k++) { \
             start_timer("multiply high"); \
-            for (uint32_t i = 0; i < 1000000; i++) { \
+            for (uint32_t i = 0; i < 10000; i++) { \
                 volatile uint32_t v = i/cst; \
             } \
             end_timer; \
@@ -507,7 +510,6 @@ int measureall(void)
     for (int j = 0; j < sizeof tests / sizeof *tests; j++) {
         uint32_t n = tests[j].n;
         uint32_t(*divu) (uint32_t) = tests[j].fct;
-        printf("Divide by %d\n", n);
         switch (n) {
         DIVSA(3)
         DIVSA(5)
@@ -597,7 +599,7 @@ int measureall(void)
     for (int j = 0; j < sizeof tests / sizeof *tests; j++) {
         uint32_t n = tests[j].n;
         printf("%d: meansa %lu sigmasa %1.1f meanmh %lu sigmamh %1.1f\n",
-                 n, meansa[j]/10000, sigmasa[j]/10000, meanmh[j]/10000, sigmamh[j]/10000);
+                 n, meansa[j]/10, sigmasa[j]/10, meanmh[j]/10, sigmamh[j]/10);
     }
 
     return 0;
