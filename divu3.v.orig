@@ -6,6 +6,8 @@ module divu3
   wire [DATA_WIDTH + 3:0] x2 = ({1'b0, x1} >> 4) + {1'b0, x1};
   wire [DATA_WIDTH + 4:0] x3 = ({1'b0, x2} >> 8) + {1'b0, x2};
   wire [DATA_WIDTH + 5:0] x4 = ({1'b0, x3} >> 16) + {1'b0, x3};
-  wire [DATA_WIDTH - 2:0] x5 = (x4 >> 4);
-  assign q = x5;
+  // Added for fair comparison with the other approaches on more than 32 bits
+  wire [DATA_WIDTH + 6:0] x5 = ({1'b0, x4} >> 32) + {1'b0, x4};
+  wire [DATA_WIDTH - 2:0] x6 = (x5 >> 4);
+  assign q = x6;
 endmodule
