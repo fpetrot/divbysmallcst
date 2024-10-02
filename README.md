@@ -1,4 +1,4 @@
-# Dividing integers by small constant
+# Dividing integers by small constants
 
 This repository provides an implementation in C of the
 routines given in the paper: 
@@ -6,8 +6,9 @@ routines given in the paper:
 <cite>Li, S. Y. (1985). Fast constant division routines.
 IEEE Transactions on Computers, 100(9), 866-869.</cite>
 
-It uses shifts and add to perform division, base on the
-reciprocical of the divisor.
+It uses shifts and add to perform division, based on the
+reciprocical of the divisor, following a trial and error
+approch to minimize the number of shifts and adds.
 The file `binrecip.bc` computes that value using `bc`.
 
 As explained in the paper these implementations overflow
@@ -41,7 +42,7 @@ my laptop (which was not Li's situation in 1985).
 Runtimes on x86 compared to using a multiply high and a
 correction is about 2x, ..., and this is exact for all
 integers.
-Then, just use your compiler and your all set!
+Then, on your computer just use your compiler and your all set!
 
 However, when it comes to specialized implementations,
 such as tiny processors without multiplier (these beasts
@@ -59,5 +60,8 @@ one can perform a systemc implementation using sc_int<>,
 as show for the 25 case in `divu25.cpp`.
 Running `make check` runs the division by 25 for bitsizes
 1 to 32.
-More to come along that side, with generation of HDL for
-synthesis.
+
+I've translated the routines in verilog hdl and thanks to
+a few scripts, verified them all and synthesized them too.
+Hopefully, this might be reported in a paper one of these
+days, ...
