@@ -54,14 +54,12 @@ The important file is `li.c` that contains the cookbook,
 and the function `checkall` that checks it all, assuming
 the host processor divider is correct.
 
-To check the validity of the approach and when to remove
-parts of the expressions when the bitsize authorizes it,
-one can perform a systemc implementation using sc_int<>,
-as show for the 25 case in `divu25.cpp`.
-Running `make check` runs the division by 25 for bitsizes
-1 to 32.
-
 I've translated the routines in verilog hdl and thanks to
-a few scripts, verified them all and synthesized them too.
+a few scripts, verified them all using Verilator, that is
+pretty fast on these simple stuffs, and synthesized them
+using AMD's Vivado for the Virtex7.
+The routines for 3, 5, 11 and 23 have been extended to 64
+bits to be compared with other division by constant
+proposals.
 Hopefully, this might be reported in a paper one of these
 days, ...
