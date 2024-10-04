@@ -5,6 +5,7 @@ module divu51
   wire [DATA_WIDTH + 2:0] x1 = ({3'b0, x0} << 2) + {3'b0, x0} + 5;
   wire [DATA_WIDTH + 3:0] x2 = ({1'b0, x1} >> 8) + {1'b0, x1};
   wire [DATA_WIDTH + 4:0] x3 = ({1'b0, x2} >> 16) + {1'b0, x2};
-  wire [DATA_WIDTH - 6:0] x4 = (x3 >> 8);
-  assign q = x4;
+  wire [DATA_WIDTH + 4:0] x4 = ({1'b0, x3} >> 32) + {1'b0, x3};
+  wire [DATA_WIDTH - 6:0] x5 = (x4 >> 8);
+  assign q = x5;
 endmodule
