@@ -136,4 +136,4 @@ run, the following results:
     Checking divu55
     Error @ 0x      6ad4b549bc (458835184060:8342458368.000000) : expects 8342457892 != has 8342457891
 
-As can be seen, truncation errors occur for 29, 35, 39, 4ç, 53, 55, so the handling of the bit pattern is not fully satisfactory.
+As can be seen, truncation errors occur for 29, 35, 39, 49, 53, 55, so the handling of the bit pattern is not fully satisfactory.
